@@ -160,9 +160,9 @@ app.post('/api/download/video', async (req, res) => {
   }
 });
 
-// Route: Télécharger une playlist (audio)
-app.post('/api/download/playlist', async (req, res) => {
-  const { url } = req.body;
+// Route: Télécharger une playlist (audio) avec progression SSE
+app.get('/api/download/playlist', async (req, res) => {
+  const url = req.query.url;
   
   if (!url) {
     return res.status(400).json({ error: 'URL requise' });
@@ -173,31 +173,126 @@ app.post('/api/download/playlist', async (req, res) => {
     return res.status(400).json({ error: 'URL de playlist invalide' });
   }
 
+  // Setup SSE
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const sendEvent = (data) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
   const jobId = uuidv4();
   const playlistDir = path.join(downloadsDir, `playlist-${jobId}`);
   fs.mkdirSync(playlistDir, { recursive: true });
 
   const outputTemplate = path.join(playlistDir, '%(playlist_index)s-%(title)s.%(ext)s');
 
+  sendEvent({ type: 'start', message: 'Récupération de la playlist...' });
+
   try {
-    // Télécharger toute la playlist en MP3
-    execSync(`${YTDLP} ${FFMPEG_OPTS} -x --audio-format mp3 --audio-quality 0 --yes-playlist -o "${outputTemplate}" "${url}"`, {
-      timeout: 1800000 // 30 minutes max pour une playlist
+    // Utiliser spawn pour avoir la sortie en temps réel
+    const ytdlp = spawn(YTDLP, [
+      '--ffmpeg-location', ffmpegPath,
+      '-x', '--audio-format', 'mp3', '--audio-quality', '0',
+      '--yes-playlist',
+      '--newline', // Important pour avoir une ligne par update
+      '-o', outputTemplate,
+      url
+    ]);
+
+    let currentTrack = 0;
+    let totalTracks = 0;
+    let currentTitle = '';
+
+    ytdlp.stdout.on('data', (data) => {
+      const output = data.toString();
+      
+      // Détecter le nombre total de vidéos
+      const playlistMatch = output.match(/Downloading (?:item |video )?(\d+) of (\d+)/i);
+      if (playlistMatch) {
+        currentTrack = parseInt(playlistMatch[1]);
+        totalTracks = parseInt(playlistMatch[2]);
+        sendEvent({ 
+          type: 'progress', 
+          current: currentTrack, 
+          total: totalTracks,
+          message: `Téléchargement ${currentTrack}/${totalTracks}...`
+        });
+      }
+
+      // Détecter le titre
+      const titleMatch = output.match(/\[download\] Destination: .*?(\d+-.*?)\.(mp3|webm|m4a)/);
+      if (titleMatch) {
+        currentTitle = titleMatch[1];
+        sendEvent({ 
+          type: 'downloading', 
+          title: currentTitle,
+          current: currentTrack,
+          total: totalTracks
+        });
+      }
+
+      // Détecter la progression du téléchargement individuel
+      const progressMatch = output.match(/(\d+\.?\d*)%/);
+      if (progressMatch) {
+        sendEvent({ 
+          type: 'file_progress', 
+          percent: parseFloat(progressMatch[1]),
+          current: currentTrack,
+          total: totalTracks
+        });
+      }
+
+      // Détecter la conversion
+      if (output.includes('[ExtractAudio]') || output.includes('Post-process')) {
+        sendEvent({ 
+          type: 'converting', 
+          current: currentTrack,
+          total: totalTracks,
+          message: `Conversion MP3 ${currentTrack}/${totalTracks}...`
+        });
+      }
     });
 
-    const files = fs.readdirSync(playlistDir);
-    res.json({
-      success: true,
-      count: files.length,
-      folder: `playlist-${jobId}`,
-      files: files.map(f => ({
-        name: f,
-        downloadUrl: `/downloads/playlist-${jobId}/${encodeURIComponent(f)}`
-      }))
+    ytdlp.stderr.on('data', (data) => {
+      console.log('yt-dlp stderr:', data.toString());
     });
+
+    ytdlp.on('close', (code) => {
+      if (code === 0) {
+        const files = fs.readdirSync(playlistDir).filter(f => f.endsWith('.mp3'));
+        sendEvent({ 
+          type: 'complete', 
+          success: true,
+          count: files.length,
+          folder: `playlist-${jobId}`,
+          files: files.map(f => ({
+            name: f,
+            downloadUrl: `/downloads/playlist-${jobId}/${encodeURIComponent(f)}`
+          }))
+        });
+      } else {
+        sendEvent({ type: 'error', message: 'Échec du téléchargement' });
+      }
+      res.end();
+    });
+
+    ytdlp.on('error', (err) => {
+      sendEvent({ type: 'error', message: err.message });
+      res.end();
+    });
+
+    // Gérer la déconnexion du client
+    req.on('close', () => {
+      ytdlp.kill();
+    });
+
   } catch (error) {
     console.error('Erreur téléchargement playlist:', error.message);
-    res.status(500).json({ error: 'Échec du téléchargement de la playlist' });
+    sendEvent({ type: 'error', message: 'Échec du téléchargement de la playlist' });
+    res.end();
   }
 });
 

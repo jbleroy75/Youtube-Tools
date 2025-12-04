@@ -369,6 +369,65 @@
       transform: translateX(-50%) translateY(0);
       opacity: 1;
     }
+
+    /* Progress bar */
+    .progress-container {
+      margin: 20px 0;
+    }
+
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .progress-bar {
+      height: 8px;
+      background: #3a3a3c;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--success), #34c759);
+      border-radius: 4px;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    .current-track {
+      background: #2c2c2e;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-top: 16px;
+      font-size: 14px;
+    }
+
+    .current-track .label {
+      color: var(--text-secondary);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .current-track .title {
+      color: var(--text);
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .pulse {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
   </style>
 </head>
 <body>
@@ -567,41 +626,115 @@
       modalBody.innerHTML = `
         <div class="loading">
           <div class="spinner"></div>
-          <p>Téléchargement en cours...<br><small>Ça peut prendre quelques minutes</small></p>
+          <p>Connexion à YouTube...</p>
         </div>
       `;
 
-      try {
-        const res = await fetch(`${API_BASE}/api/download/playlist`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url })
-        });
+      // Utiliser SSE pour la progression en temps réel
+      const eventSource = new EventSource(`${API_BASE}/api/download/playlist?url=${encodeURIComponent(url)}`);
+      
+      let currentTrack = 0;
+      let totalTracks = 0;
 
-        const data = await res.json();
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        switch(data.type) {
+          case 'start':
+            modalBody.innerHTML = `
+              <div class="progress-container">
+                <div class="progress-info">
+                  <span class="pulse">🔍 ${data.message}</span>
+                </div>
+              </div>
+            `;
+            break;
 
-        if (!res.ok) throw new Error(data.error);
+          case 'progress':
+            currentTrack = data.current;
+            totalTracks = data.total;
+            updateProgressUI(currentTrack, totalTracks, '');
+            break;
 
-        let filesHtml = data.files.map(f => `
-          <div class="playlist-item">
-            <span>${f.name}</span>
-            <a href="${f.downloadUrl}" download>⬇️</a>
-          </div>
-        `).join('');
+          case 'downloading':
+            updateProgressUI(data.current, data.total, data.title);
+            break;
 
+          case 'file_progress':
+            updateFileProgress(data.percent);
+            break;
+
+          case 'converting':
+            const trackInfo = document.querySelector('.current-track .title');
+            if (trackInfo) {
+              trackInfo.innerHTML = `<span class="pulse">🔄 Conversion MP3...</span>`;
+            }
+            break;
+
+          case 'complete':
+            eventSource.close();
+            let filesHtml = data.files.map(f => `
+              <div class="playlist-item">
+                <span>${f.name}</span>
+                <a href="${f.downloadUrl}" download>⬇️</a>
+              </div>
+            `).join('');
+
+            modalBody.innerHTML = `
+              <div class="result">
+                <p style="text-align:center;margin-bottom:16px;">
+                  <span style="font-size:40px;">🎉</span><br>
+                  <strong>${data.count} titres</strong> téléchargés
+                </p>
+                <div class="playlist-results">
+                  ${filesHtml}
+                </div>
+              </div>
+            `;
+            break;
+
+          case 'error':
+            eventSource.close();
+            showError(data.message || 'Erreur de téléchargement');
+            break;
+        }
+      };
+
+      eventSource.onerror = () => {
+        eventSource.close();
+        showError('Connexion perdue');
+      };
+
+      // Fonction pour mettre à jour l'UI de progression
+      function updateProgressUI(current, total, title) {
+        const percent = total > 0 ? Math.round((current / total) * 100) : 0;
         modalBody.innerHTML = `
-          <div class="result">
-            <p style="text-align:center;margin-bottom:16px;">
-              <span style="font-size:40px;">🎉</span><br>
-              <strong>${data.count} titres</strong> téléchargés
-            </p>
-            <div class="playlist-results">
-              ${filesHtml}
+          <div class="progress-container">
+            <div class="progress-info">
+              <span>💪 Track ${current}/${total}</span>
+              <span>${percent}%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: ${percent}%"></div>
+            </div>
+            <div class="current-track">
+              <div class="label">En cours :</div>
+              <div class="title">${title || 'Préparation...'}</div>
+            </div>
+            <div id="fileProgress" style="margin-top:12px;">
+              <div class="progress-bar" style="height:4px;">
+                <div class="progress-fill" id="fileProgressBar" style="width:0%;background:var(--accent-secondary);"></div>
+              </div>
             </div>
           </div>
         `;
-      } catch (e) {
-        showError(e.message || 'Erreur de téléchargement');
+      }
+
+      function updateFileProgress(percent) {
+        const bar = document.getElementById('fileProgressBar');
+        if (bar) {
+          bar.style.width = `${percent}%`;
+        }
       }
     }
 
