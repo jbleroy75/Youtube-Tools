@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#000000">
+  <title>📱 YouTube Tools</title>
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
+  <style>
+    :root {
+      --bg: #000000;
+      --card: #1c1c1e;
+      --card-hover: #2c2c2e;
+      --accent: #ff2d55;
+      --accent-secondary: #5856d6;
+      --text: #ffffff;
+      --text-secondary: #8e8e93;
+      --success: #30d158;
+      --warning: #ff9f0a;
+      --safe-top: env(safe-area-inset-top, 20px);
+      --safe-bottom: env(safe-area-inset-bottom, 20px);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: var(--safe-top) 16px var(--safe-bottom);
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+    }
+
+    .container {
+      max-width: 430px;
+      margin: 0 auto;
+      padding-bottom: 100px;
+    }
+
+    header {
+      text-align: center;
+      padding: 20px 0 30px;
+    }
+
+    header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0;
+      background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    header p {
+      color: var(--text-secondary);
+      font-size: 15px;
+      margin: 8px 0 0;
+    }
+
+    .input-section {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+
+    .input-wrapper {
+      display: flex;
+      gap: 10px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: #3a3a3c;
+      border: none;
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 16px;
+      color: var(--text);
+      outline: none;
+    }
+
+    input[type="text"]::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .btn-paste {
+      background: var(--accent);
+      border: none;
+      border-radius: 12px;
+      padding: 16px 20px;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      transition: transform 0.2s, opacity 0.2s;
+    }
+
+    .btn-paste:active {
+      transform: scale(0.95);
+      opacity: 0.8;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .action-card {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 24px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+    }
+
+    .action-card:active {
+      transform: scale(0.97);
+    }
+
+    .action-card.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .action-card .icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .action-card h3 {
+      font-size: 17px;
+      font-weight: 600;
+      margin: 0 0 6px;
+    }
+
+    .action-card p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    .action-card.audio {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border-color: #5856d6;
+    }
+
+    .action-card.video {
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d1f1f 100%);
+      border-color: #ff2d55;
+    }
+
+    .action-card.playlist {
+      background: linear-gradient(135deg, #1a2e1a 0%, #1e3e16 100%);
+      border-color: #30d158;
+    }
+
+    .action-card.summary {
+      background: linear-gradient(135deg, #2e2a1a 0%, #3e3216 100%);
+      border-color: #ff9f0a;
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 1000;
+      padding: var(--safe-top) 16px var(--safe-bottom);
+      overflow-y: auto;
+    }
+
+    .modal.active {
+      display: block;
+    }
+
+    .modal-content {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 430px;
+      margin: 20px auto;
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(50px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-header h2 {
+      font-size: 22px;
+      margin: 0;
+    }
+
+    .btn-close {
+      background: #3a3a3c;
+      border: none;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      font-size: 20px;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid #3a3a3c;
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading p {
+      margin-top: 16px;
+      color: var(--text-secondary);
+    }
+
+    .result {
+      padding: 20px 0;
+    }
+
+    .result.success {
+      text-align: center;
+    }
+
+    .result .icon-big {
+      font-size: 60px;
+      display: block;
+      margin-bottom: 16px;
+    }
+
+    .btn-download {
+      display: block;
+      background: var(--success);
+      color: white;
+      text-decoration: none;
+      padding: 18px;
+      border-radius: 14px;
+      font-size: 17px;
+      font-weight: 600;
+      text-align: center;
+      margin-top: 20px;
+      transition: opacity 0.2s;
+    }
+
+    .btn-download:active {
+      opacity: 0.8;
+    }
+
+    .summary-content {
+      background: #2c2c2e;
+      border-radius: 14px;
+      padding: 20px;
+      font-size: 15px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+
+    .summary-content ul {
+      padding-left: 20px;
+      margin: 10px 0;
+    }
+
+    .summary-content li {
+      margin-bottom: 8px;
+    }
+
+    .error {
+      background: rgba(255,45,85,0.2);
+      border: 1px solid var(--accent);
+      border-radius: 14px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .error .icon-big {
+      font-size: 50px;
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    .playlist-results {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .playlist-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      background: #2c2c2e;
+      border-radius: 10px;
+      margin-bottom: 8px;
+    }
+
+    .playlist-item span {
+      flex: 1;
+      font-size: 14px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-right: 10px;
+    }
+
+    .playlist-item a {
+      color: var(--success);
+      text-decoration: none;
+      font-size: 20px;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: calc(var(--safe-bottom) + 20px);
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--card);
+      padding: 14px 24px;
+      border-radius: 12px;
+      font-size: 15px;
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 2000;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎵 YouTube Tools</h1>
+      <p>Télécharge • Écoute • Résume</p>
+    </header>
+
+    <div class="input-section">
+      <div class="input-wrapper">
+        <input type="text" id="urlInput" placeholder="Colle un lien YouTube..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <button class="btn-paste" onclick="pasteUrl()">📋</button>
+      </div>
+    </div>
+
+    <div class="actions">
+      <div class="action-card audio" onclick="downloadAudio()">
+        <span class="icon">🎧</span>
+        <h3>Audio MP3</h3>
+        <p>Musique hors-ligne</p>
+      </div>
+
+      <div class="action-card video" onclick="downloadVideo()">
+        <span class="icon">🎬</span>
+        <h3>Vidéo HD</h3>
+        <p>Meilleure qualité</p>
+      </div>
+
+      <div class="action-card playlist" onclick="downloadPlaylist()">
+        <span class="icon">💪</span>
+        <h3>Playlist Gym</h3>
+        <p>Toute la playlist</p>
+      </div>
+
+      <div class="action-card summary" onclick="getSummary()">
+        <span class="icon">📝</span>
+        <h3>Résumé</h3>
+        <p>Points clés en bullets</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal" id="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle">Chargement...</h2>
+        <button class="btn-close" onclick="closeModal()">✕</button>
+      </div>
+      <div id="modalBody">
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>Traitement en cours...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const API_BASE = '';
+    const urlInput = document.getElementById('urlInput');
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+    const toast = document.getElementById('toast');
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    async function pasteUrl() {
+      try {
+        const text = await navigator.clipboard.readText();
+        urlInput.value = text;
+        showToast('✓ Lien collé');
+      } catch (e) {
+        showToast('⚠️ Autorise l\'accès au presse-papier');
+      }
+    }
+
+    function openModal(title) {
+      modalTitle.textContent = title;
+      modalBody.innerHTML = `
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>Traitement en cours...</p>
+        </div>
+      `;
+      modal.classList.add('active');
+    }
+
+    function closeModal() {
+      modal.classList.remove('active');
+    }
+
+    function showError(message) {
+      modalBody.innerHTML = `
+        <div class="error">
+          <span class="icon-big">😕</span>
+          <p>${message}</p>
+        </div>
+      `;
+    }
+
+    function getUrl() {
+      const url = urlInput.value.trim();
+      if (!url) {
+        showToast('⚠️ Colle d\'abord un lien');
+        return null;
+      }
+      if (!url.includes('youtube.com') && !url.includes('youtu.be')) {
+        showToast('⚠️ Lien YouTube invalide');
+        return null;
+      }
+      return url;
+    }
+
+    async function downloadAudio() {
+      const url = getUrl();
+      if (!url) return;
+
+      openModal('🎧 Téléchargement Audio');
+
+      try {
+        const res = await fetch(`${API_BASE}/api/download/audio`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error);
+
+        modalBody.innerHTML = `
+          <div class="result success">
+            <span class="icon-big">✅</span>
+            <h3>${data.filename.substring(37)}</h3>
+            <a href="${data.downloadUrl}" download class="btn-download">
+              ⬇️ Télécharger MP3
+            </a>
+          </div>
+        `;
+      } catch (e) {
+        showError(e.message || 'Erreur de téléchargement');
+      }
+    }
+
+    async function downloadVideo() {
+      const url = getUrl();
+      if (!url) return;
+
+      openModal('🎬 Téléchargement Vidéo');
+
+      try {
+        const res = await fetch(`${API_BASE}/api/download/video`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error);
+
+        modalBody.innerHTML = `
+          <div class="result success">
+            <span class="icon-big">✅</span>
+            <h3>${data.filename.substring(37)}</h3>
+            <a href="${data.downloadUrl}" download class="btn-download">
+              ⬇️ Télécharger MP4
+            </a>
+          </div>
+        `;
+      } catch (e) {
+        showError(e.message || 'Erreur de téléchargement');
+      }
+    }
+
+    async function downloadPlaylist() {
+      const url = getUrl();
+      if (!url) return;
+
+      if (!url.includes('list=')) {
+        showToast('⚠️ Ce n\'est pas une playlist');
+        return;
+      }
+
+      openModal('💪 Téléchargement Playlist');
+      modalBody.innerHTML = `
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>Téléchargement en cours...<br><small>Ça peut prendre quelques minutes</small></p>
+        </div>
+      `;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/download/playlist`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error);
+
+        let filesHtml = data.files.map(f => `
+          <div class="playlist-item">
+            <span>${f.name}</span>
+            <a href="${f.downloadUrl}" download>⬇️</a>
+          </div>
+        `).join('');
+
+        modalBody.innerHTML = `
+          <div class="result">
+            <p style="text-align:center;margin-bottom:16px;">
+              <span style="font-size:40px;">🎉</span><br>
+              <strong>${data.count} titres</strong> téléchargés
+            </p>
+            <div class="playlist-results">
+              ${filesHtml}
+            </div>
+          </div>
+        `;
+      } catch (e) {
+        showError(e.message || 'Erreur de téléchargement');
+      }
+    }
+
+    async function getSummary() {
+      const url = getUrl();
+      if (!url) return;
+
+      openModal('📝 Génération du Résumé');
+
+      try {
+        const res = await fetch(`${API_BASE}/api/summary`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error);
+
+        const content = data.summary || data.rawContent;
+        const formattedContent = content
+          .replace(/•/g, '•')
+          .replace(/\*\*/g, '')
+          .replace(/\n- /g, '\n• ');
+
+        modalBody.innerHTML = `
+          <div class="result">
+            ${data.message ? `<p style="color:var(--warning);margin-bottom:12px;font-size:13px;">⚠️ ${data.message}</p>` : ''}
+            <div class="summary-content">${formattedContent}</div>
+          </div>
+        `;
+      } catch (e) {
+        showError(e.message || 'Erreur lors de la génération du résumé');
+      }
+    }
+
+    // Fermer modal en cliquant dehors
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    // Empêcher le zoom sur double-tap
+    document.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+    }, { passive: false });
+  </script>
+</body>
+</html>

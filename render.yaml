@@ -1,0 +1,10 @@
+# Render Blueprint
+services:
+  - type: web
+    name: youtube-tools
+    env: docker
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
