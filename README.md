@@ -1,107 +1,127 @@
-# 🎵 YouTube Tools
+<p align="center">
+  <img src="assets/screenshot.png" alt="YouTube Tools" width="300">
+</p>
 
-Outil web simple optimisé pour iPhone Pro Max pour télécharger et résumer des vidéos YouTube.
+<h1 align="center">🎵 YouTube Tools</h1>
+
+<p align="center">
+  <strong>Télécharge • Écoute • Résume</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-iOS%20%7C%20Web-blue?style=for-the-badge" alt="Platform">
+  <img src="https://img.shields.io/badge/Node.js-18+-green?style=for-the-badge&logo=node.js" alt="Node.js">
+  <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License">
+</p>
+
+<p align="center">
+  Application web minimaliste optimisée pour <strong>iPhone Pro Max</strong><br>
+  pour télécharger et résumer des vidéos YouTube.
+</p>
+
+---
 
 ## ✨ Fonctionnalités
 
-- **🎧 Audio MP3** - Télécharge l'audio en MP3 320kbps pour écouter hors-ligne
-- **🎬 Vidéo HD** - Télécharge la vidéo en meilleure qualité (MP4)
-- **💪 Playlist Gym** - Télécharge une playlist entière en MP3
-- **📝 Résumé** - Génère un résumé en bullet points de la vidéo
+| | Fonction | Description |
+|:---:|:---|:---|
+| 🎧 | **Audio MP3** | Télécharge l'audio en MP3 320kbps pour écouter hors-ligne |
+| 🎬 | **Vidéo HD** | Télécharge la vidéo en meilleure qualité (MP4) |
+| 💪 | **Playlist Gym** | Télécharge une playlist entière en MP3 |
+| 📝 | **Résumé IA** | Génère un résumé en bullet points avec GPT-4 |
+
+---
 
 ## 🚀 Installation
 
 ### Prérequis
 
-1. **Node.js 18+** - [nodejs.org](https://nodejs.org)
-2. **yt-dlp** - Outil de téléchargement YouTube
+- **Node.js 18+** - [nodejs.org](https://nodejs.org)
+- **yt-dlp** - Outil de téléchargement
 
 ```bash
-# Installer yt-dlp sur macOS
+# macOS
 brew install yt-dlp
 
 # Ou avec pip
 pip install yt-dlp
 ```
 
-### Setup
+### Setup rapide
 
 ```bash
-# Aller dans le dossier
-cd youtube-tools
+# Cloner le repo
+git clone https://github.com/jbleroy75/Youtube-Tools.git
+cd Youtube-Tools
 
 # Installer les dépendances
 npm install
 
-# (Optionnel) Configurer la clé OpenAI pour les résumés
+# (Optionnel) Configurer OpenAI pour les résumés
 cp .env.example .env
 # Édite .env et ajoute ta clé OPENAI_API_KEY
 
-# Lancer le serveur
+# Lancer
 npm start
 ```
+
+---
 
 ## 📱 Accès depuis iPhone
 
 1. Lance le serveur sur ton Mac
-2. Note l'adresse IP de ton Mac (Préférences Système > Réseau)
-3. Sur ton iPhone, ouvre Safari et va sur `http://<IP-DU-MAC>:3000`
-4. Ajoute à l'écran d'accueil pour une expérience app native !
+2. Trouve ton IP locale :
+   ```bash
+   ipconfig getifaddr en0
+   ```
+3. Sur ton iPhone, ouvre Safari → `http://<IP>:3000`
+4. **Bonus** : Ajoute à l'écran d'accueil pour une expérience native !
 
-### Trouver ton IP
+---
 
-```bash
-ipconfig getifaddr en0
-```
+## ☁️ Déploiement Cloud (Render)
 
-## 🔑 Configuration OpenAI (optionnel)
+Déploie gratuitement pour y accéder depuis n'importe où :
 
-Pour la fonctionnalité de résumé automatique, tu as besoin d'une clé API OpenAI.
+1. Fork ce repo
+2. Va sur [render.com](https://render.com)
+3. **New** → **Web Service** → Connecte ton repo
+4. Ajoute la variable `OPENAI_API_KEY`
+5. Deploy ! 🚀
 
-1. Va sur [platform.openai.com](https://platform.openai.com)
-2. Crée une clé API
-3. Ajoute-la dans le fichier `.env`:
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
 
-```
+---
+
+## 🔑 Configuration OpenAI
+
+Pour les résumés automatiques, ajoute ta clé dans `.env` :
+
+```env
 OPENAI_API_KEY=sk-...
 ```
 
-Sans clé, le résumé affichera les sous-titres bruts de la vidéo.
+> Sans clé, le résumé affichera les sous-titres bruts.
 
-## 📁 Structure
+---
 
-```
-youtube-tools/
-├── server.js          # Backend Express
-├── public/
-│   └── index.html     # Frontend (SPA)
-├── downloads/         # Fichiers téléchargés
-├── package.json
-├── .env.example
-└── README.md
-```
+## 🛠️ Stack technique
 
-## ⚠️ Notes importantes
+- **Backend** : Node.js + Express
+- **Frontend** : HTML/CSS vanilla (optimisé iOS)
+- **Téléchargement** : yt-dlp + ffmpeg
+- **IA** : OpenAI GPT-4o-mini
 
-- Les fichiers téléchargés sont automatiquement supprimés après 24h
-- Le téléchargement peut prendre quelques minutes selon la taille
-- Utilise cet outil uniquement pour du contenu que tu as le droit de télécharger
-- L'outil est conçu pour un usage personnel local
+---
 
-## 🛠️ Dépannage
+## ⚠️ Notes
 
-### "yt-dlp n'est pas installé"
-```bash
-brew install yt-dlp
-# ou
-pip install yt-dlp
-```
+- Les fichiers sont supprimés après 24h
+- Usage personnel uniquement
+- Respecte les droits d'auteur
 
-### "Échec du téléchargement"
-- Vérifie que l'URL est valide
-- Certaines vidéos peuvent être protégées
-- Met à jour yt-dlp: `brew upgrade yt-dlp`
+---
 
-### Le résumé ne fonctionne pas
-- Vérifie ta clé OpenAI dans `.env`
-- Certaines vidéos n'ont pas de sous-titres disponibles
+<p align="center">
+  Made with ❤️ for gym sessions 💪
+</p>
