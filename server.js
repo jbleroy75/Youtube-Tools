@@ -103,8 +103,8 @@ app.post('/api/download/audio', async (req, res) => {
   const outputTemplate = path.join(downloadsDir, `${jobId}-%(title)s.%(ext)s`);
 
   try {
-    // Télécharger en MP3 320kbps
-    execSync(`${YTDLP} ${FFMPEG_OPTS} -x --audio-format mp3 --audio-quality 0 -o "${outputTemplate}" "${url}"`, {
+    // Télécharger en MP3 320kbps avec métadonnées et pochette
+    execSync(`${YTDLP} ${FFMPEG_OPTS} -x --audio-format mp3 --audio-quality 0 --embed-thumbnail --embed-metadata --parse-metadata "%(channel)s:%(artist)s" --parse-metadata "%(title)s:%(title)s" -o "${outputTemplate}" "${url}"`, {
       timeout: 300000 // 5 minutes max
     });
 
@@ -138,8 +138,8 @@ app.post('/api/download/video', async (req, res) => {
   const outputTemplate = path.join(downloadsDir, `${jobId}-%(title)s.%(ext)s`);
 
   try {
-    // Télécharger la meilleure qualité
-    execSync(`${YTDLP} ${FFMPEG_OPTS} -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 -o "${outputTemplate}" "${url}"`, {
+    // Télécharger la meilleure qualité avec métadonnées
+    execSync(`${YTDLP} ${FFMPEG_OPTS} -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 --embed-thumbnail --embed-metadata -o "${outputTemplate}" "${url}"`, {
       timeout: 600000 // 10 minutes max
     });
 
@@ -196,6 +196,10 @@ app.get('/api/download/playlist', async (req, res) => {
     const ytdlp = spawn(YTDLP, [
       '--ffmpeg-location', ffmpegPath,
       '-x', '--audio-format', 'mp3', '--audio-quality', '0',
+      '--embed-thumbnail',           // Ajouter la pochette/miniature
+      '--embed-metadata',            // Ajouter les métadonnées
+      '--parse-metadata', '%(channel)s:%(artist)s',  // Artiste = chaîne YouTube
+      '--parse-metadata', '%(title)s:%(title)s',     // Titre
       '--yes-playlist',
       '--newline', // Important pour avoir une ligne par update
       '-o', outputTemplate,
