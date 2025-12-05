@@ -26,6 +26,9 @@ const YTDLP = process.env.YTDLP_PATH || (process.platform === 'darwin'
 // Options ffmpeg pour yt-dlp
 const FFMPEG_OPTS = `--ffmpeg-location "${ffmpegPath}"`;
 
+// Options pour éviter les warnings YouTube
+const YT_OPTS = '--extractor-args "youtube:player_client=web" --no-warnings';
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
@@ -75,7 +78,7 @@ app.post('/api/info', async (req, res) => {
   }
 
   try {
-    const result = execSync(`${YTDLP} --dump-json --no-download "${url}"`, {
+    const result = execSync(`${YTDLP} ${YT_OPTS} --dump-json --no-download "${url}"`, {
       encoding: 'utf-8',
       timeout: 30000
     });
@@ -106,7 +109,7 @@ app.post('/api/download/audio', async (req, res) => {
   try {
     // Télécharger en MP3 320kbps avec métadonnées et pochette
     // Extraire l'artiste depuis le titre (format "Artiste - Titre") via regex
-    execSync(`${YTDLP} ${FFMPEG_OPTS} -x --audio-format mp3 --audio-quality 0 --embed-thumbnail --embed-metadata --parse-metadata "title:(?P<artist>.+?) - (?P<title>.+)" -o "${outputTemplate}" "${url}"`, {
+    execSync(`${YTDLP} ${FFMPEG_OPTS} ${YT_OPTS} -x --audio-format mp3 --audio-quality 0 --embed-thumbnail --embed-metadata --parse-metadata "title:(?P<artist>.+?) - (?P<title>.+)" -o "${outputTemplate}" "${url}"`, {
       timeout: 300000 // 5 minutes max
     });
 
@@ -141,7 +144,7 @@ app.post('/api/download/video', async (req, res) => {
 
   try {
     // Télécharger la meilleure qualité avec métadonnées
-    execSync(`${YTDLP} ${FFMPEG_OPTS} -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 --embed-thumbnail --embed-metadata -o "${outputTemplate}" "${url}"`, {
+    execSync(`${YTDLP} ${FFMPEG_OPTS} ${YT_OPTS} -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 --embed-thumbnail --embed-metadata -o "${outputTemplate}" "${url}"`, {
       timeout: 600000 // 10 minutes max
     });
 
@@ -197,6 +200,8 @@ app.get('/api/download/playlist', async (req, res) => {
     // Utiliser spawn pour avoir la sortie en temps réel
     const ytdlp = spawn(YTDLP, [
       '--ffmpeg-location', ffmpegPath,
+      '--extractor-args', 'youtube:player_client=web',
+      '--no-warnings',
       '-x', '--audio-format', 'mp3', '--audio-quality', '0',
       '--embed-thumbnail',           // Ajouter la pochette/miniature
       '--embed-metadata',            // Ajouter les métadonnées
@@ -340,7 +345,7 @@ app.post('/api/summary', async (req, res) => {
     
     try {
       // Essayer de récupérer les sous-titres auto-générés ou manuels
-      execSync(`${YTDLP} --write-auto-sub --sub-lang fr,en --skip-download -o "${tempDir}/subs" "${url}"`, {
+      execSync(`${YTDLP} ${YT_OPTS} --write-auto-sub --sub-lang fr,en --skip-download -o "${tempDir}/subs" "${url}"`, {
         timeout: 60000
       });
       
@@ -363,7 +368,7 @@ app.post('/api/summary', async (req, res) => {
     // Récupérer aussi la description
     let description = '';
     try {
-      const info = execSync(`${YTDLP} --dump-json --no-download "${url}"`, {
+      const info = execSync(`${YTDLP} ${YT_OPTS} --dump-json --no-download "${url}"`, {
         encoding: 'utf-8',
         timeout: 30000
       });
