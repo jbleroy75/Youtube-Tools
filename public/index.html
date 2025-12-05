@@ -671,24 +671,38 @@
             }
             break;
 
+          case 'zipping':
+            modalBody.innerHTML = `
+              <div class="loading">
+                <div class="spinner"></div>
+                <p>📦 Création du ZIP...</p>
+              </div>
+            `;
+            break;
+
           case 'complete':
             eventSource.close();
-            let filesHtml = data.files.map(f => `
-              <div class="playlist-item">
-                <span>${f.name}</span>
-                <a href="${f.downloadUrl}" download>⬇️</a>
-              </div>
-            `).join('');
-
             modalBody.innerHTML = `
-              <div class="result">
-                <p style="text-align:center;margin-bottom:16px;">
-                  <span style="font-size:40px;">🎉</span><br>
-                  <strong>${data.count} titres</strong> téléchargés
-                </p>
-                <div class="playlist-results">
-                  ${filesHtml}
-                </div>
+              <div class="result success">
+                <span class="icon-big">🎉</span>
+                <h3>${data.count} titres prêts !</h3>
+                <p style="color:var(--text-secondary);margin:8px 0 20px;">${data.zipSize} MB</p>
+                <a href="${data.zipUrl}" download="playlist-gym.zip" class="btn-download" style="font-size:20px;">
+                  📦 Télécharger tout (ZIP)
+                </a>
+                <details style="margin-top:20px;">
+                  <summary style="color:var(--text-secondary);cursor:pointer;font-size:14px;">
+                    Ou télécharger individuellement...
+                  </summary>
+                  <div class="playlist-results" style="margin-top:12px;">
+                    ${data.files.map(f => `
+                      <div class="playlist-item">
+                        <span>${f.name}</span>
+                        <a href="${f.downloadUrl}" download>⬇️</a>
+                      </div>
+                    `).join('')}
+                  </div>
+                </details>
               </div>
             `;
             break;

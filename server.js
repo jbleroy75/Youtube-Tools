@@ -4,6 +4,7 @@ const { spawn, execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
+const archiver = require('archiver');
 require('dotenv').config();
 
 // Chemin vers ffmpeg (npm sur Mac, système sur Linux)
@@ -264,23 +265,45 @@ app.get('/api/download/playlist', async (req, res) => {
       console.log('yt-dlp stderr:', data.toString());
     });
 
-    ytdlp.on('close', (code) => {
+    ytdlp.on('close', async (code) => {
       if (code === 0) {
         const files = fs.readdirSync(playlistDir).filter(f => f.endsWith('.mp3'));
-        sendEvent({ 
-          type: 'complete', 
-          success: true,
-          count: files.length,
-          folder: `playlist-${jobId}`,
-          files: files.map(f => ({
-            name: f,
-            downloadUrl: `/downloads/playlist-${jobId}/${encodeURIComponent(f)}`
-          }))
+        
+        // Créer un ZIP avec tous les fichiers
+        sendEvent({ type: 'zipping', message: 'Création du ZIP...' });
+        
+        const zipPath = path.join(downloadsDir, `playlist-${jobId}.zip`);
+        const output = fs.createWriteStream(zipPath);
+        const archive = archiver('zip', { zlib: { level: 5 } });
+        
+        archive.pipe(output);
+        
+        // Ajouter tous les MP3 au ZIP
+        files.forEach(file => {
+          archive.file(path.join(playlistDir, file), { name: file });
+        });
+        
+        await archive.finalize();
+        
+        output.on('close', () => {
+          sendEvent({ 
+            type: 'complete', 
+            success: true,
+            count: files.length,
+            folder: `playlist-${jobId}`,
+            zipUrl: `/downloads/playlist-${jobId}.zip`,
+            zipSize: (archive.pointer() / 1024 / 1024).toFixed(1),
+            files: files.map(f => ({
+              name: f,
+              downloadUrl: `/downloads/playlist-${jobId}/${encodeURIComponent(f)}`
+            }))
+          });
+          res.end();
         });
       } else {
         sendEvent({ type: 'error', message: 'Échec du téléchargement' });
+        res.end();
       }
-      res.end();
     });
 
     ytdlp.on('error', (err) => {
