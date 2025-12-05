@@ -105,7 +105,8 @@ app.post('/api/download/audio', async (req, res) => {
 
   try {
     // Télécharger en MP3 320kbps avec métadonnées et pochette
-    execSync(`${YTDLP} ${FFMPEG_OPTS} -x --audio-format mp3 --audio-quality 0 --embed-thumbnail --embed-metadata --parse-metadata "%(channel)s:%(artist)s" --parse-metadata "%(title)s:%(title)s" -o "${outputTemplate}" "${url}"`, {
+    // Extraire l'artiste depuis le titre (format "Artiste - Titre") via regex
+    execSync(`${YTDLP} ${FFMPEG_OPTS} -x --audio-format mp3 --audio-quality 0 --embed-thumbnail --embed-metadata --parse-metadata "title:(?P<artist>.+?) - (?P<title>.+)" -o "${outputTemplate}" "${url}"`, {
       timeout: 300000 // 5 minutes max
     });
 
@@ -199,8 +200,7 @@ app.get('/api/download/playlist', async (req, res) => {
       '-x', '--audio-format', 'mp3', '--audio-quality', '0',
       '--embed-thumbnail',           // Ajouter la pochette/miniature
       '--embed-metadata',            // Ajouter les métadonnées
-      '--parse-metadata', '%(channel)s:%(artist)s',  // Artiste = chaîne YouTube
-      '--parse-metadata', '%(title)s:%(title)s',     // Titre
+      '--parse-metadata', 'title:(?P<artist>.+?) - (?P<title>.+)',  // Extraire artiste du titre
       '--yes-playlist',
       '--newline', // Important pour avoir une ligne par update
       '-o', outputTemplate,
