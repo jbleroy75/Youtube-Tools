@@ -26,8 +26,8 @@ const YTDLP = process.env.YTDLP_PATH || (process.platform === 'darwin'
 // Options ffmpeg pour yt-dlp
 const FFMPEG_OPTS = `--ffmpeg-location "${ffmpegPath}"`;
 
-// Options pour éviter les warnings YouTube
-const YT_OPTS = '--extractor-args "youtube:player_client=web" --no-warnings';
+// Options pour éviter les warnings YouTube (sans restreindre le player client)
+const YT_OPTS = '--no-warnings';
 
 app.use(cors());
 app.use(express.json());
@@ -109,7 +109,7 @@ app.post('/api/download/audio', async (req, res) => {
   try {
     // Télécharger en MP3 320kbps avec métadonnées et pochette
     // Extraire l'artiste depuis le titre (format "Artiste - Titre") via regex
-    execSync(`${YTDLP} ${FFMPEG_OPTS} ${YT_OPTS} -x --audio-format mp3 --audio-quality 0 --embed-thumbnail --embed-metadata --parse-metadata "title:(?P<artist>.+?) - (?P<title>.+)" -o "${outputTemplate}" "${url}"`, {
+    execSync(`${YTDLP} ${FFMPEG_OPTS} ${YT_OPTS} -f bestaudio -x --audio-format mp3 --audio-quality 0 --embed-thumbnail --embed-metadata --parse-metadata "title:(?P<artist>.+?) - (?P<title>.+)" -o "${outputTemplate}" "${url}"`, {
       timeout: 300000 // 5 minutes max
     });
 
@@ -144,7 +144,7 @@ app.post('/api/download/video', async (req, res) => {
 
   try {
     // Télécharger la meilleure qualité avec métadonnées
-    execSync(`${YTDLP} ${FFMPEG_OPTS} ${YT_OPTS} -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 --embed-thumbnail --embed-metadata -o "${outputTemplate}" "${url}"`, {
+    execSync(`${YTDLP} ${FFMPEG_OPTS} ${YT_OPTS} -f "bv*+ba/b" --merge-output-format mp4 --embed-thumbnail --embed-metadata -o "${outputTemplate}" "${url}"`, {
       timeout: 600000 // 10 minutes max
     });
 
@@ -200,8 +200,8 @@ app.get('/api/download/playlist', async (req, res) => {
     // Utiliser spawn pour avoir la sortie en temps réel
     const ytdlp = spawn(YTDLP, [
       '--ffmpeg-location', ffmpegPath,
-      '--extractor-args', 'youtube:player_client=web',
       '--no-warnings',
+      '-f', 'bestaudio',             // Prendre le meilleur audio disponible
       '-x', '--audio-format', 'mp3', '--audio-quality', '0',
       '--embed-thumbnail',           // Ajouter la pochette/miniature
       '--embed-metadata',            // Ajouter les métadonnées
